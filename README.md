@@ -35,56 +35,22 @@ A real-time data pipeline for monitoring ride-share events, computing trip metri
                                                       │ dashboard    │
                                                       └──────────────┘
 🚀 Quick Start
-1. Clone and configure
-bash
-Copy
-Edit
+# 1. Clone and configure
 git clone https://github.com/kacperguzydev/TripSafe-Analytics.git
 cd TripSafe-Analytics
 cp .env.example .env
 # Edit .env with your local paths / credentials
-2. Start dependencies with Docker-Compose
-bash
-Copy
-Edit
-docker-compose up -d
-# - PostgreSQL on 5432
-# - Redis on 6379
-# - Airflow Webserver on http://localhost:8080
-3. Prepare your database
-bash
-Copy
-Edit
+# 2. Prepare your database
 python database.py
-4. Run the producer
-bash
-Copy
-Edit
+# 3. Run the producer
 python kafka/producer.py
-5. Launch Spark streaming
-bash
-Copy
-Edit
+# 4. Launch Spark streaming
 python streaming.py
-6. (Optional) Send test fraud events
-bash
-Copy
-Edit
+# 5. (Optional) Send test fraud events
 python fraud_test.py
-7. Fire up your DAGs
+#6. Fire up your DAGs
 Copy dags/tripsafe_pipeline.py into your Airflow dags/ folder.
-
-In another shell, trigger:
-
-bash
-Copy
-Edit
-airflow dags list        # should show tripsafe_pipeline
-airflow dags trigger tripsafe_pipeline
-8. View the dashboard
-bash
-Copy
-Edit
+#7. View the dashboard
 streamlit run dashboard.py
 ⚙️ Components
 producer.py & fraud_test.py
