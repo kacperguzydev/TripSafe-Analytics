@@ -1,150 +1,121 @@
-# TripSafe-Analytics# 🚀 TripSafe Analytics
+# 🚗 TripSafe Analytics
 
-**TripSafe Analytics** is an end-to-end real-time ride-hailing analytics platform.  
-It ingests streaming trip events from Kafka, processes them in Spark for both fraud detection and rolling metrics, writes results to PostgreSQL, exposes Prometheus metrics, and visualizes alerts & KPIs in Streamlit. Orchestrated with Apache Airflow and containerized via Docker.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)  
+[![Python](https://img.shields.io/badge/python-3.8%2B-green.svg)]()  
+[![Docker](https://img.shields.io/badge/docker-enabled-blue.svg)]()  
+[![Airflow](https://img.shields.io/badge/airflow-2.x-orange.svg)]()
+
+A real-time data pipeline for monitoring ride-share events, computing trip metrics, and detecting potential fraud—built with Kafka, Spark, PostgreSQL, and Airflow. Includes a Streamlit dashboard to visualize events and alerts.
 
 ---
 
-## 🗂️ Repository Structure
+## 📐 Architecture
 
-TripSafe-Analytics/
-├── airflow/ # Docker-Compose & Airflow config
-│ ├── dags/ # Airflow DAGs (tripsafe_pipeline.py)
-│ ├── logs/
-│ └── plugins/
-├── config.py # central DB & Kafka settings
-├── database.py # create DB + tables
-├── producer.py # Kafka trip event simulator
-├── streaming.py # Spark streaming → trip_events table
-├── fraud_detector.py # batch Spark fraud detector (via Airflow DAG)
-├── trip_metrics.py # batch Spark metrics job (via Airflow DAG)
-├── monitoring.py # Prometheus instrumentation
-├── dashboard.py # Streamlit dashboard (alerts & metrics)
-└── README.md # you are here
-
-markdown
+```text
+┌─────────┐          ┌─────────┐          ┌───────────┐
+│Producer │──Kafka──>│ Spark   │──JDBC───>│ PostgreSQL│
+│ (Python)│          │Streaming│          │  trip_events
+└─────────┘          └─────────┘          └────┬──────┘
+                                                │
+                                                │ batch
+                                                │ run
+                                                ▼
+                                         ┌───────────────┐
+                                         │ fraud_detector│──┐
+                                         │ & metrics     │  │ writes
+                                         └───────────────┘  ▼
+                                               │      ┌──────────────┐
+                                               └─────>│ trip_alerts  │
+                                                      └──────────────┘
+                                                      ┌──────────────┐
+                                                      │ trip_metrics │
+                                                      └──────────────┘
+                                                      ┌──────────────┐
+                                                      │ Streamlit    │
+                                                      │ dashboard    │
+                                                      └──────────────┘
+🚀 Quick Start
+1. Clone and configure
+bash
 Copy
 Edit
-
----
-
-## ⚙️ Tech Stack
-
-- **Streaming & Batch:** Apache Spark Structured Streaming & batch  
-- **Messaging:** Apache Kafka  
-- **Storage:** PostgreSQL  
-- **Orchestration:** Apache Airflow (CeleryExecutor + Redis broker)  
-- **Monitoring:** Prometheus + Grafana (optional)  
-- **Dashboard:** Streamlit  
-- **Containerization:** Docker & Docker Compose  
-- **Language:** Python 3.8+
-
----
-
-## 🔧 Prerequisites
-
-1. **Java 8+**  
-2. **Python 3.8+** (with virtualenv)  
-3. **Docker & Docker Compose**  
-4. **Kafka**, **Zookeeper**, **PostgreSQL** (or use bundled Docker services)  
-
----
-
-## 🚀 Quickstart
-
-1. **Clone & set up**  
-   ```bash
-   git clone https://github.com/kacperguzydev/TripSafe-Analytics.git
-   cd TripSafe-Analytics
-   python3 -m venv .venv && source .venv/bin/activate
-   pip install -r requirements.txt
-Initialize database & tables
-
+git clone https://github.com/kacperguzydev/TripSafe-Analytics.git
+cd TripSafe-Analytics
+cp .env.example .env
+# Edit .env with your local paths / credentials
+2. Start dependencies with Docker-Compose
+bash
+Copy
+Edit
+docker-compose up -d
+# - PostgreSQL on 5432
+# - Redis on 6379
+# - Airflow Webserver on http://localhost:8080
+3. Prepare your database
 bash
 Copy
 Edit
 python database.py
-Start Kafka & Zookeeper
-
+4. Run the producer
 bash
 Copy
 Edit
-docker-compose up -d zookeeper kafka
-Fire up Spark jobs
-
-Streaming ingestion
-
+python kafka/producer.py
+5. Launch Spark streaming
 bash
 Copy
 Edit
 python streaming.py
-Monitoring endpoint
+6. (Optional) Send test fraud events
+bash
+Copy
+Edit
+python fraud_test.py
+7. Fire up your DAGs
+Copy dags/tripsafe_pipeline.py into your Airflow dags/ folder.
+
+In another shell, trigger:
 
 bash
 Copy
 Edit
-python monitoring.py
-In another shell:
-Fraud detector (batch)
-
-bash
-Copy
-Edit
-python fraud_detector.py
-Metrics roll-up (batch)
-
-bash
-Copy
-Edit
-python trip_metrics.py
-Run the producer simulator
-
-bash
-Copy
-Edit
-python producer.py
-Launch the dashboard
-
+airflow dags list        # should show tripsafe_pipeline
+airflow dags trigger tripsafe_pipeline
+8. View the dashboard
 bash
 Copy
 Edit
 streamlit run dashboard.py
-(Optional) Orchestrate with Airflow
+⚙️ Components
+producer.py & fraud_test.py
+Simulate ride events and inject controlled “fraud” scenarios.
 
-bash
-Copy
-Edit
-cd airflow
-docker-compose up -d
-# Place tripsafe_pipeline.py in airflow/dags/
-# Visit http://localhost:8080 to trigger DAG
-📈 What’s Inside
-producer.py – simulates realistic trips + injects 2–5% fraud
+streaming.py
+Reads from Kafka, parses JSON, writes raw events into trip_events.
 
-streaming.py – Spark Structured Streaming → trip_events table
+fraud_detector.py
+Batch job that truncates trip_alerts, applies static‐GPS, short-trip, and location-jump rules, dedupes, then writes alerts.
 
-fraud_detector.py – Spark batch job, applies rules (static GPS, short trip, jump) → trip_alerts
+trip_metrics.py
+Batch job that computes daily city-level total trips, average duration, and cancellations into trip_metrics.
 
-trip_metrics.py – Spark batch job, calculates daily city KPIs → trip_metrics
+monitoring.py
+Exposes Prometheus metrics (e.g. event counts, processing rates) on port 800X.
 
-monitoring.py – exposes Prometheus metrics (/metrics on port 8002)
+dashboard.py
+Streamlit app to browse events, metrics, and alerts in real time.
 
-dashboard.py – Streamlit UI for alerts & metrics
+database.py
+Helpers to create the tripsafe database and schemas on PostgreSQL.
 
-📊 Fraud Rules
-Static GPS – start and end at same coordinates
+dags/tripsafe_pipeline.py
+Orchestrates fraud & metrics jobs via Airflow every 5 minutes.
 
-Short Trip – duration < 60 sec
+🔧 Configuration
+All settings live in config.py and overridable via environment variables in .env.
 
-Sudden Jump – lat/lon delta > 1°
+DB_CONFIG: PostgreSQL host, port, user, password.
 
-📝 Roadmap
-✅ Core streaming & persistence
+KAFKA_CONFIG: bootstrap servers & topic name.
 
-✅ Batch fraud + metrics jobs
-
-✅ Airflow orchestration
-
-✅ Prometheus monitoring
-
-✅ Streamlit dashboard
+CITIES, EVENT_TYPES: fixtures for producer.
